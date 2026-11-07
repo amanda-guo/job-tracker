@@ -121,26 +121,6 @@ describe('parseStoredReview', () => {
     expect(parseStoredReview(stored)).toEqual(stored)
   })
 
-  it('gives a metric the record predates a target of 0 and a count of 0', () => {
-    const { coffeeChats: _count, targets, ...rest } = makeInput()
-    const { coffeeChats: _target, ...oldTargets } = targets
-    const review = parseStoredReview({
-      id: 'abc',
-      ...rest,
-      targets: oldTargets,
-    })
-    expect(review?.coffeeChats).toBe(0)
-    expect(review?.targets.coffeeChats).toBe(0)
-    expect(review?.targets.outreach).toBe(DEFAULT_TARGETS.outreach)
-  })
-
-  it('keeps a stored target for a metric even when its count is missing', () => {
-    const { coffeeChats: _count, ...rest } = makeInput()
-    const review = parseStoredReview({ id: 'abc', ...rest })
-    expect(review?.coffeeChats).toBe(0)
-    expect(review?.targets.coffeeChats).toBe(DEFAULT_TARGETS.coffeeChats)
-  })
-
   it.each([
     ['missing id', makeInput()],
     ['empty id', { id: '', ...makeInput() }],

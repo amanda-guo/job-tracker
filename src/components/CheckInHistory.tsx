@@ -96,7 +96,7 @@ export function CheckInHistory({
                     </button>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-4 grid grid-cols-4 gap-2">
                   {METRICS.map(({ key, label }) => (
                     <Stat key={key} label={label}>
                       <strong className="mt-1 block text-lg">
