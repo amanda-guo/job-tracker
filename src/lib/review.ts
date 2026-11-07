@@ -1,6 +1,7 @@
 export const METRICS = [
   { key: 'conversations', label: 'Conversations', defaultTarget: 5 },
   { key: 'outreach', label: 'Warm outreach', defaultTarget: 18 },
+  { key: 'coffeeChats', label: 'Coffee chats', defaultTarget: 2 },
   { key: 'referrals', label: 'Referral asks', defaultTarget: 2 },
   { key: 'applications', label: 'Tailored apps', defaultTarget: 5 },
   { key: 'practice', label: 'Practice', defaultTarget: 2 },

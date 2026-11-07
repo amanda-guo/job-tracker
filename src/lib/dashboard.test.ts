@@ -66,6 +66,24 @@ describe('computeTotals', () => {
     })
   })
 
+  it('totals Coffee chats and its weekly targets across the period', () => {
+    const weeks = [
+      makeReview({ id: 'a', weekOf: '2026-11-02', coffeeChats: 3 }),
+      makeReview({
+        id: 'b',
+        weekOf: '2026-10-26',
+        coffeeChats: 1,
+        targets: { ...DEFAULT_TARGETS, coffeeChats: 0 },
+      }),
+    ]
+    expect(computeTotals(weeks).find((t) => t.key === 'coffeeChats')).toEqual({
+      key: 'coffeeChats',
+      label: 'Coffee chats',
+      value: 4,
+      target: 2,
+    })
+  })
+
   it('returns zeros for no check-ins, one entry per metric', () => {
     const totals = computeTotals([])
     expect(totals).toHaveLength(METRICS.length)

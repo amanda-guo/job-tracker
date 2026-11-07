@@ -176,7 +176,7 @@ export function Dashboard({ reviews, defaultWeek }: Props) {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-3 lg:grid-cols-6">
+      <div className="mt-3 grid grid-cols-3 gap-3 lg:grid-cols-7">
         {totals.map((item) => (
           <button
             type="button"

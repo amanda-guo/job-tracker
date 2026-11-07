@@ -53,6 +53,21 @@ describe('createLocalStorageStore', () => {
     expect(await reopened.list()).toEqual([result.review])
   })
 
+  it('persists Coffee chats and its adjusted target across sessions', async () => {
+    const { store, storage } = setup()
+    await saveOk(
+      store,
+      makeInput({
+        coffeeChats: 3,
+        targets: { ...makeInput().targets, coffeeChats: 5 },
+      }),
+    )
+
+    const [review] = await createLocalStorageStore({ storage }).list()
+    expect(review.coffeeChats).toBe(3)
+    expect(review.targets.coffeeChats).toBe(5)
+  })
+
   it('lists newest week first', async () => {
     const { store } = setup()
     await saveOk(store, makeInput({ weekOf: '2026-10-19' }))

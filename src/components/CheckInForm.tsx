@@ -106,7 +106,7 @@ export function CheckInForm({
         <summary className="cursor-pointer text-sm font-bold">
           Adjust this week’s plan targets
         </summary>
-        <div className="mt-4 grid grid-cols-6 gap-2">
+        <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
           {METRICS.map(({ key, label, defaultTarget }) => (
             <label
               key={key}

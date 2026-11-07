@@ -131,6 +131,59 @@ describe('parseStoredReview', () => {
   })
 })
 
+describe('Coffee chats metric', () => {
+  it('is defined with a default weekly target of 2', () => {
+    expect(METRICS).toContainEqual({
+      key: 'coffeeChats',
+      label: 'Coffee chats',
+      defaultTarget: 2,
+    })
+    expect(DEFAULT_TARGETS.coffeeChats).toBe(2)
+  })
+
+  it('reads its count and adjusted weekly target from the check-in form', () => {
+    const form = new FormData()
+    form.set('weekOf', '2026-11-02')
+    form.set('health', 'steady')
+    form.set('coffeeChats', '3')
+    form.set(targetFieldName('coffeeChats'), '4')
+
+    const value = parseOk(reviewFieldsFromForm(form))
+    expect(value.coffeeChats).toBe(3)
+    expect(value.targets.coffeeChats).toBe(4)
+  })
+
+  it('falls back to the default target of 2 when the target field is blank', () => {
+    const form = new FormData()
+    form.set('weekOf', '2026-11-02')
+    form.set('health', 'steady')
+    form.set('coffeeChats', '1')
+    form.set(targetFieldName('coffeeChats'), '')
+
+    expect(parseOk(reviewFieldsFromForm(form)).targets.coffeeChats).toBe(2)
+  })
+
+  it('gives weeks saved before it existed a count and target of 0', () => {
+    const { coffeeChats: _count, targets, ...rest } = makeInput()
+    const { coffeeChats: _target, ...oldTargets } = targets
+    const review = parseStoredReview({
+      id: 'abc',
+      ...rest,
+      targets: oldTargets,
+    })
+    expect(review?.coffeeChats).toBe(0)
+    expect(review?.targets.coffeeChats).toBe(0)
+    expect(review?.targets.outreach).toBe(DEFAULT_TARGETS.outreach)
+  })
+
+  it('keeps a stored target even when the count is missing', () => {
+    const { coffeeChats: _count, ...rest } = makeInput()
+    const review = parseStoredReview({ id: 'abc', ...rest })
+    expect(review?.coffeeChats).toBe(0)
+    expect(review?.targets.coffeeChats).toBe(DEFAULT_TARGETS.coffeeChats)
+  })
+})
+
 describe('reviewFieldsFromForm', () => {
   it('maps form fields, including target-* fields, into a parseable check-in', () => {
     // Distinct values per metric, so a mixed-up field would be caught.

@@ -79,12 +79,20 @@ export function parseReviewInput(raw: unknown): ParseResult {
   }
 }
 
-/** Turns a record read back from storage into a Review, or null if it is unusable. */
+/**
+ * Turns a record read back from storage into a Review, or null if it is unusable.
+ * A metric the record has no count for (it was saved before that metric
+ * existed) gets a target of 0, so older weeks aren't shown as missing it.
+ */
 export function parseStoredReview(raw: unknown): Review | null {
   if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id === '') {
     return null
   }
-  const parsed = parseReviewInput(raw)
+  const storedTargets = isRecord(raw.targets) ? raw.targets : {}
+  const targets = byMetric(({ key }) =>
+    key in raw || key in storedTargets ? storedTargets[key] : 0,
+  )
+  const parsed = parseReviewInput({ ...raw, targets })
   return parsed.ok ? { id: raw.id, ...parsed.value } : null
 }
 
