@@ -106,14 +106,14 @@ export function CheckInForm({
         <summary className="cursor-pointer text-sm font-bold">
           Adjust this week’s plan targets
         </summary>
-        <div className="mt-4 grid grid-cols-6 gap-2">
+        <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
           {METRICS.map(({ key, label, defaultTarget }) => (
             <label
               key={key}
               className="flex min-w-0 flex-col text-xs text-[#2D4E6C]"
             >
               <span className="flex min-h-8 items-end hyphens-auto break-words">
-                {key === 'conversations' ? 'Conver­sations' : label}
+                {label}
               </span>
               <input
                 name={targetFieldName(key)}

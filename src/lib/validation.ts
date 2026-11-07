@@ -1,11 +1,11 @@
 import {
+  byMetric,
   DEFAULT_TARGETS,
   HEALTH_OPTIONS,
   type Health,
   MAX_COUNT,
   MAX_HOURS,
   MAX_TEXT_LENGTH,
-  METRICS,
   type Metric,
   type Review,
   type ReviewInput,
@@ -59,12 +59,10 @@ export function parseReviewInput(raw: unknown): ParseResult {
   }
 
   const rawTargets = isRecord(raw.targets) ? raw.targets : {}
-  const counts = {} as Record<Metric, number>
-  const targets = {} as Targets
-  for (const { key } of METRICS) {
-    counts[key] = toCount(raw[key], 0)
-    targets[key] = toCount(rawTargets[key], DEFAULT_TARGETS[key])
-  }
+  const counts = byMetric(({ key }) => toCount(raw[key], 0))
+  const targets: Targets = byMetric(({ key }) =>
+    toCount(rawTargets[key], DEFAULT_TARGETS[key]),
+  )
 
   return {
     ok: true,
@@ -81,12 +79,20 @@ export function parseReviewInput(raw: unknown): ParseResult {
   }
 }
 
-/** Turns a record read back from storage into a Review, or null if it is unusable. */
+/**
+ * Turns a record read back from storage into a Review, or null if it is unusable.
+ * A metric the record has no count for (it was saved before that metric
+ * existed) gets a target of 0, so older weeks aren't shown as missing it.
+ */
 export function parseStoredReview(raw: unknown): Review | null {
   if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id === '') {
     return null
   }
-  const parsed = parseReviewInput(raw)
+  const storedTargets = isRecord(raw.targets) ? raw.targets : {}
+  const targets = byMetric(({ key }) =>
+    key in raw || key in storedTargets ? storedTargets[key] : 0,
+  )
+  const parsed = parseReviewInput({ ...raw, targets })
   return parsed.ok ? { id: raw.id, ...parsed.value } : null
 }
 
@@ -101,14 +107,12 @@ export function reviewFieldsFromForm(form: FormData): Record<string, unknown> {
   }
   return {
     weekOf: get('weekOf'),
-    ...Object.fromEntries(METRICS.map(({ key }) => [key, get(key)])),
+    ...byMetric(({ key }) => get(key)),
     hours: get('hours'),
     health: get('health'),
     win: get('win'),
     nextFocus: get('nextFocus'),
     pivotNote: get('pivotNote'),
-    targets: Object.fromEntries(
-      METRICS.map(({ key }) => [key, get(targetFieldName(key))]),
-    ),
+    targets: byMetric(({ key }) => get(targetFieldName(key))),
   }
 }

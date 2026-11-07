@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_TARGETS, MAX_TEXT_LENGTH } from './review'
+import { byMetric, DEFAULT_TARGETS, MAX_TEXT_LENGTH, METRICS } from './review'
 import { makeInput } from './test-fixtures'
 import {
   isValidWeekOf,
@@ -14,6 +14,14 @@ const parseOk = (raw: unknown) => {
   if (!result.ok) throw new Error(`expected ok, got: ${result.message}`)
   return result.value
 }
+
+describe('byMetric', () => {
+  it('builds one entry per metric, in METRICS order', () => {
+    const record = byMetric(({ label }) => label)
+    expect(Object.keys(record)).toEqual(METRICS.map(({ key }) => key))
+    expect(Object.values(record)).toEqual(METRICS.map(({ label }) => label))
+  })
+})
 
 describe('isValidWeekOf', () => {
   it('accepts real YYYY-MM-DD dates', () => {
@@ -62,24 +70,17 @@ describe('parseReviewInput', () => {
     })
   })
 
-  it('rounds and clamps counts to 0–999, treating blanks and junk as 0', () => {
-    const value = parseOk({
-      ...makeInput(),
-      conversations: '-3',
-      outreach: 2.6,
-      referrals: 5000,
-      applications: 'abc',
-      practice: '',
-      events: undefined,
-    })
-    expect(value).toMatchObject({
-      conversations: 0,
-      outreach: 3,
-      referrals: 999,
-      applications: 0,
-      practice: 0,
-      events: 0,
-    })
+  it.each([
+    ['-3', 0],
+    [2.6, 3],
+    ['1.4', 1],
+    [5000, 999],
+    ['abc', 0],
+    ['', 0],
+    [undefined, 0],
+  ])('reads a count of %j as %d for every metric', (raw, expected) => {
+    const value = parseOk({ ...makeInput(), ...byMetric(() => raw) })
+    expect(value).toMatchObject(byMetric(() => expected))
   })
 
   it('caps hours at 60', () => {
@@ -120,6 +121,26 @@ describe('parseStoredReview', () => {
     expect(parseStoredReview(stored)).toEqual(stored)
   })
 
+  it('gives a metric the record predates a target of 0 and a count of 0', () => {
+    const { coffeeChats: _count, targets, ...rest } = makeInput()
+    const { coffeeChats: _target, ...oldTargets } = targets
+    const review = parseStoredReview({
+      id: 'abc',
+      ...rest,
+      targets: oldTargets,
+    })
+    expect(review?.coffeeChats).toBe(0)
+    expect(review?.targets.coffeeChats).toBe(0)
+    expect(review?.targets.outreach).toBe(DEFAULT_TARGETS.outreach)
+  })
+
+  it('keeps a stored target for a metric even when its count is missing', () => {
+    const { coffeeChats: _count, ...rest } = makeInput()
+    const review = parseStoredReview({ id: 'abc', ...rest })
+    expect(review?.coffeeChats).toBe(0)
+    expect(review?.targets.coffeeChats).toBe(DEFAULT_TARGETS.coffeeChats)
+  })
+
   it.each([
     ['missing id', makeInput()],
     ['empty id', { id: '', ...makeInput() }],
@@ -132,50 +153,34 @@ describe('parseStoredReview', () => {
 
 describe('reviewFieldsFromForm', () => {
   it('maps form fields, including target-* fields, into a parseable check-in', () => {
+    // Distinct values per metric, so a mixed-up field would be caught.
+    const count = (index: number) => index + 1
+    const target = (index: number) => index + 10
     const form = new FormData()
     const entries: Record<string, string> = {
       weekOf: '2026-11-02',
-      conversations: '4',
-      outreach: '12',
-      referrals: '1',
-      applications: '6',
-      practice: '2',
-      events: '1',
       hours: '15',
       health: 'energized',
       win: 'Offer call',
       nextFocus: 'Negotiate',
       pivotNote: 'Sick two days',
-      [targetFieldName('conversations')]: '3',
-      [targetFieldName('outreach')]: '10',
-      [targetFieldName('referrals')]: '2',
-      [targetFieldName('applications')]: '5',
-      [targetFieldName('practice')]: '2',
-      [targetFieldName('events')]: '0',
     }
+    METRICS.forEach(({ key }, index) => {
+      entries[key] = String(count(index))
+      entries[targetFieldName(key)] = String(target(index))
+    })
     for (const [name, value] of Object.entries(entries)) form.set(name, value)
 
+    const indexOf = (key: string) => METRICS.findIndex((m) => m.key === key)
     expect(parseOk(reviewFieldsFromForm(form))).toEqual({
       weekOf: '2026-11-02',
-      conversations: 4,
-      outreach: 12,
-      referrals: 1,
-      applications: 6,
-      practice: 2,
-      events: 1,
+      ...byMetric(({ key }) => count(indexOf(key))),
       hours: 15,
       health: 'energized',
       win: 'Offer call',
       nextFocus: 'Negotiate',
       pivotNote: 'Sick two days',
-      targets: {
-        conversations: 3,
-        outreach: 10,
-        referrals: 2,
-        applications: 5,
-        practice: 2,
-        events: 0,
-      },
+      targets: byMetric(({ key }) => target(indexOf(key))),
     })
   })
 })

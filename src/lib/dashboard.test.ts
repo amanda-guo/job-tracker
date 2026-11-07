@@ -13,7 +13,7 @@ import {
   percentOfTarget,
   progressWidth,
 } from './dashboard'
-import { DEFAULT_TARGETS } from './review'
+import { DEFAULT_TARGETS, METRICS } from './review'
 import { makeReview } from './test-fixtures'
 
 const reviews = [
@@ -68,7 +68,7 @@ describe('computeTotals', () => {
 
   it('returns zeros for no check-ins, one entry per metric', () => {
     const totals = computeTotals([])
-    expect(totals).toHaveLength(6)
+    expect(totals).toHaveLength(METRICS.length)
     expect(totals.every((t) => t.value === 0 && t.target === 0)).toBe(true)
   })
 })

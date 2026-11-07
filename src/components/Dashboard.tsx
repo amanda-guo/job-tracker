@@ -23,7 +23,7 @@ type Props = {
 }
 
 export function Dashboard({ reviews, defaultWeek }: Props) {
-  const [metric, setMetric] = useState<Metric>('conversations')
+  const [metric, setMetric] = useState<Metric>(METRICS[0].key)
   const [period, setPeriod] = useState<Period>('all')
   const [selectedWeek, setSelectedWeek] = useState(
     () => reviews[0]?.weekOf ?? defaultWeek,
@@ -176,7 +176,7 @@ export function Dashboard({ reviews, defaultWeek }: Props) {
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-3 lg:grid-cols-6">
+      <div className="mt-3 grid grid-cols-3 gap-3 lg:grid-cols-7">
         {totals.map((item) => (
           <button
             type="button"
