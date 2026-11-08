@@ -131,6 +131,21 @@ describe('parseStoredReview', () => {
   })
 })
 
+describe('Referrals metric', () => {
+  it('has a default weekly target of 3', () => {
+    expect(DEFAULT_TARGETS.referrals).toBe(3)
+  })
+
+  it('falls back to the default target when the form leaves it blank', () => {
+    const form = new FormData()
+    form.set('weekOf', '2026-11-02')
+    form.set('health', 'steady')
+    form.set(targetFieldName('referrals'), '')
+    const value = parseOk(reviewFieldsFromForm(form))
+    expect(value.targets.referrals).toBe(3)
+  })
+})
+
 describe('Coffee chats metric', () => {
   it('is defined with a default weekly target of 2', () => {
     expect(METRICS).toContainEqual({
