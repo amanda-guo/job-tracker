@@ -103,3 +103,67 @@ export function currentWeekStart(now: Date = new Date()): string {
   date.setDate(date.getDate() - daysSinceMonday)
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+export type MetricChange = {
+  key: Metric
+  label: string
+  current: number
+  /** Null when there is no earlier check-in to compare against. */
+  previous: number | null
+  delta: number | null
+}
+
+export type WeekOverWeek = {
+  /** The week being compared: the latest check-in in view. */
+  weekOf: string
+  /** The most recent check-in before it, from all check-ins (may be outside the view). */
+  previousWeekOf: string | null
+  changes: MetricChange[]
+}
+
+/**
+ * Compares the latest check-in in `visible` against the most recent earlier
+ * check-in in `all`. Earlier check-ins are searched across all reviews, so the
+ * first week of a month still compares against the last week of the month before.
+ * Returns null when nothing is in view.
+ */
+export function weekOverWeek(
+  all: Review[],
+  visible: Review[],
+): WeekOverWeek | null {
+  const current = chronological(visible).at(-1)
+  if (!current) return null
+  const previous =
+    chronological(all)
+      .filter((review) => review.weekOf < current.weekOf)
+      .at(-1) ?? null
+
+  return {
+    weekOf: current.weekOf,
+    previousWeekOf: previous?.weekOf ?? null,
+    changes: METRICS.map(({ key, label }) => ({
+      key,
+      label,
+      current: current[key],
+      previous: previous ? previous[key] : null,
+      delta: previous ? current[key] - previous[key] : null,
+    })),
+  }
+}
+
+/** e.g. "+3", "−2" (minus sign), "0", or "—" when there is nothing to compare. */
+export function formatDelta(delta: number | null): string {
+  if (delta === null) return '—'
+  if (delta > 0) return `+${delta}`
+  if (delta < 0) return `−${Math.abs(delta)}`
+  return '0'
+}
+
+/** Screen-reader wording, e.g. "up 3 from 2", "no change from 4". */
+export function describeDelta(change: MetricChange): string {
+  const { delta, previous } = change
+  if (delta === null || previous === null) return 'no earlier week to compare'
+  if (delta > 0) return `up ${delta} from ${previous}`
+  if (delta < 0) return `down ${Math.abs(delta)} from ${previous}`
+  return `no change from ${previous}`
+}

@@ -4,13 +4,16 @@ import {
   chartMax,
   chronological,
   computeTotals,
+  describeDelta,
   filterByPeriod,
+  formatDelta,
   formatShortDate,
   formatWeekRange,
   monthOf,
   type Period,
   percentOfTarget,
   progressWidth,
+  weekOverWeek,
 } from '../lib/dashboard'
 import { METRICS, type Metric, type Review } from '../lib/review'
 
@@ -44,6 +47,10 @@ export function Dashboard({ reviews, defaultWeek }: Props) {
   const totals = useMemo(() => computeTotals(visible), [visible])
   const selected = totals.find((item) => item.key === metric) ?? totals[0]
   const max = chartMax(visible, metric)
+  const comparison = useMemo(
+    () => weekOverWeek(reviews, visible),
+    [reviews, visible],
+  )
 
   return (
     <section
@@ -190,6 +197,54 @@ export function Dashboard({ reviews, defaultWeek }: Props) {
           </button>
         ))}
       </div>
+
+      {comparison && (
+        <section
+          aria-labelledby="wow-heading"
+          className="mt-3 rounded-[28px] border border-[#172B3E]/15 bg-white p-5"
+        >
+          <p
+            id="wow-heading"
+            className="text-xs font-semibold uppercase tracking-[0.18em] text-[#43719A]"
+          >
+            Week over week
+          </p>
+          <p className="mt-1 text-sm">
+            {formatWeekRange(comparison.weekOf)}
+            {comparison.previousWeekOf
+              ? ` vs ${formatWeekRange(comparison.previousWeekOf)}`
+              : ' · no earlier check-in to compare'}
+          </p>
+          <ul className="mt-3 grid grid-cols-3 gap-3 lg:grid-cols-7">
+            {comparison.changes.map((change) => (
+              <li
+                key={change.key}
+                aria-label={`${change.label}: ${change.current}, ${describeDelta(change)}`}
+                className="rounded-2xl bg-[#172B3E]/[0.04] p-3"
+              >
+                <span className="text-xs text-[#43719A]">{change.label}</span>
+                <span
+                  aria-hidden="true"
+                  className="mt-1 flex items-baseline gap-2"
+                >
+                  <strong className="text-xl">{change.current}</strong>
+                  <span
+                    className={`text-sm font-semibold ${
+                      change.delta === null || change.delta === 0
+                        ? 'text-[#43719A]'
+                        : change.delta > 0
+                          ? 'text-[#2F7A55]'
+                          : 'text-[#C05884]'
+                    }`}
+                  >
+                    {formatDelta(change.delta)}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </section>
   )
 }

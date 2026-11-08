@@ -7,11 +7,14 @@ import {
   chronological,
   computeTotals,
   currentWeekStart,
+  describeDelta,
   filterByPeriod,
+  formatDelta,
   formatShortDate,
   formatWeekRange,
   percentOfTarget,
   progressWidth,
+  weekOverWeek,
 } from './dashboard'
 import { DEFAULT_TARGETS, METRICS } from './review'
 import { makeReview } from './test-fixtures'
@@ -144,5 +147,76 @@ describe('currentWeekStart', () => {
     [new Date(2026, 10, 1, 12), '2026-10-26'], // Sunday, crosses a month
   ])('returns the Monday of the week containing %s', (now, expected) => {
     expect(currentWeekStart(now)).toBe(expected)
+  })
+})
+
+describe('weekOverWeek', () => {
+  const find = (result: ReturnType<typeof weekOverWeek>, key: string) =>
+    result?.changes.find((c) => c.key === key)
+
+  it('compares the latest check-in with the one before it', () => {
+    const result = weekOverWeek(reviews, reviews)
+    expect(result?.weekOf).toBe('2026-11-02')
+    expect(result?.previousWeekOf).toBe('2026-10-26')
+    expect(find(result, 'applications')).toEqual({
+      key: 'applications',
+      label: 'Tailored apps',
+      current: 4,
+      previous: 2,
+      delta: 2,
+    })
+    expect(result?.changes).toHaveLength(METRICS.length)
+  })
+
+  it('looks outside the visible period for the previous week', () => {
+    const november = reviews.filter((r) => r.weekOf.startsWith('2026-11'))
+    expect(weekOverWeek(reviews, november)?.previousWeekOf).toBe('2026-10-26')
+  })
+
+  it('compares a selected older week with the check-in before it, not after', () => {
+    const october = reviews.filter((r) => r.weekOf === '2026-10-26')
+    const result = weekOverWeek(reviews, october)
+    expect(result?.previousWeekOf).toBe('2026-09-28')
+    expect(find(result, 'applications')?.delta).toBe(-4)
+  })
+
+  it('has no delta for the earliest check-in', () => {
+    const first = reviews.filter((r) => r.id === 'c')
+    const result = weekOverWeek(reviews, first)
+    expect(result?.previousWeekOf).toBeNull()
+    expect(
+      result?.changes.every((c) => c.previous === null && c.delta === null),
+    ).toBe(true)
+  })
+
+  it('returns null when nothing is in view', () => {
+    expect(weekOverWeek(reviews, [])).toBeNull()
+  })
+})
+
+describe('delta formatting', () => {
+  it.each([
+    [3, '+3'],
+    [-2, '\u22122'],
+    [0, '0'],
+    [null, '\u2014'],
+  ])('formats %s as %s', (delta, expected) => {
+    expect(formatDelta(delta)).toBe(expected)
+  })
+
+  it.each([
+    [{ previous: 2, delta: 3 }, 'up 3 from 2'],
+    [{ previous: 6, delta: -4 }, 'down 4 from 6'],
+    [{ previous: 4, delta: 0 }, 'no change from 4'],
+    [{ previous: null, delta: null }, 'no earlier week to compare'],
+  ])('describes %o as "%s"', (change, expected) => {
+    expect(
+      describeDelta({
+        key: 'events',
+        label: 'Events',
+        current: 0,
+        ...change,
+      }),
+    ).toBe(expected)
   })
 })
