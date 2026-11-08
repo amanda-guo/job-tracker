@@ -6,6 +6,7 @@ import {
   chartMax,
   chronological,
   computeTotals,
+  countWeeksHitAllTargets,
   currentWeekStart,
   filterByPeriod,
   formatShortDate,
@@ -13,7 +14,7 @@ import {
   percentOfTarget,
   progressWidth,
 } from './dashboard'
-import { DEFAULT_TARGETS, METRICS } from './review'
+import { byMetric, DEFAULT_TARGETS, METRICS } from './review'
 import { makeReview } from './test-fixtures'
 
 const reviews = [
@@ -88,6 +89,37 @@ describe('computeTotals', () => {
     const totals = computeTotals([])
     expect(totals).toHaveLength(METRICS.length)
     expect(totals.every((t) => t.value === 0 && t.target === 0)).toBe(true)
+  })
+})
+
+describe('countWeeksHitAllTargets', () => {
+  const t = DEFAULT_TARGETS
+  const atTarget = byMetric(({ key }) => t[key])
+
+  it('returns zero of zero with no check-ins', () => {
+    expect(countWeeksHitAllTargets([])).toEqual({ hit: 0, total: 0 })
+  })
+
+  it('counts weeks where every metric meets or beats the target', () => {
+    const weeks = [
+      makeReview({ id: 'a', ...atTarget }),
+      makeReview({ id: 'b', ...atTarget, applications: t.applications + 3 }),
+      makeReview({ id: 'c', ...atTarget, applications: t.applications - 1 }),
+    ]
+    expect(countWeeksHitAllTargets(weeks)).toEqual({ hit: 2, total: 3 })
+  })
+
+  it("uses each week's own targets", () => {
+    const weeks = [
+      makeReview({
+        id: 'a',
+        ...atTarget,
+        applications: 1,
+        targets: { ...t, applications: 1 },
+      }),
+      makeReview({ id: 'b', ...atTarget, applications: 1 }),
+    ]
+    expect(countWeeksHitAllTargets(weeks)).toEqual({ hit: 1, total: 2 })
   })
 })
 

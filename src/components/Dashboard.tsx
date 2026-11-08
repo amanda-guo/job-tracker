@@ -4,6 +4,7 @@ import {
   chartMax,
   chronological,
   computeTotals,
+  countWeeksHitAllTargets,
   filterByPeriod,
   formatShortDate,
   formatWeekRange,
@@ -42,6 +43,10 @@ export function Dashboard({ reviews, defaultWeek }: Props) {
     [reviews, period, selectedWeek, selectedMonth],
   )
   const totals = useMemo(() => computeTotals(visible), [visible])
+  const weeksOnTarget = useMemo(
+    () => countWeeksHitAllTargets(reviews),
+    [reviews],
+  )
   const selected = totals.find((item) => item.key === metric) ?? totals[0]
   const max = chartMax(visible, metric)
 
@@ -175,6 +180,15 @@ export function Dashboard({ reviews, defaultWeek }: Props) {
           )}
         </div>
       </div>
+
+      <p className="mt-3 rounded-2xl border border-[#172B3E]/15 bg-white p-4 text-sm">
+        <span className="text-[#43719A]">Weeks hitting every target: </span>
+        <strong>
+          {weeksOnTarget.total
+            ? `${weeksOnTarget.hit} of ${weeksOnTarget.total}`
+            : 'No check-ins yet'}
+        </strong>
+      </p>
 
       <div className="mt-3 grid grid-cols-3 gap-3 lg:grid-cols-7">
         {totals.map((item) => (
