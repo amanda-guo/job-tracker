@@ -39,6 +39,15 @@ export function computeTotals(reviews: Review[]): MetricTotal[] {
   }))
 }
 
+/** True when every metric met or beat that week's own target. */
+export const hitAllTargets = (review: Review) =>
+  METRICS.every(({ key }) => review[key] >= review.targets[key])
+
+/** How many of the given weeks hit every target, out of all weeks given. */
+export function countWeeksHitAllTargets(reviews: Review[]) {
+  return { hit: reviews.filter(hitAllTargets).length, total: reviews.length }
+}
+
 export const percentOfTarget = (value: number, target: number) =>
   target > 0 ? Math.round((value / target) * 100) : 0
 
