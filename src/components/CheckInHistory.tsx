@@ -1,5 +1,19 @@
+import { csvFilename, reviewsToCsv } from '../lib/csv'
 import { formatWeekRange } from '../lib/dashboard'
 import { METRICS, type Review } from '../lib/review'
+
+function downloadCsv(reviews: Review[]) {
+  // The byte-order mark lets Excel read the file as UTF-8.
+  const blob = new Blob([`﻿${reviewsToCsv(reviews)}`], {
+    type: 'text/csv;charset=utf-8',
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = csvFilename()
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 type Props = {
   reviews: Review[]
@@ -54,9 +68,19 @@ export function CheckInHistory({
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2D4E6C]">
         Check-in history
       </p>
-      <h2 id="history-heading" className="mt-2 font-serif text-3xl">
-        Weeks at a glance.
-      </h2>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h2 id="history-heading" className="font-serif text-3xl">
+          Weeks at a glance.
+        </h2>
+        <button
+          type="button"
+          onClick={() => downloadCsv(reviews)}
+          disabled={!reviews.length}
+          className="rounded-full bg-[#172B3E] px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+        >
+          Export CSV
+        </button>
+      </div>
       <p
         role="status"
         aria-live="polite"
