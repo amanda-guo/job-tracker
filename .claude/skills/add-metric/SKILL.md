@@ -6,7 +6,7 @@ description: This skill is used when a user needs to track a new job search metr
 Add a new weekly metric: $ARGUMENTS
 
 ## Before you start
-- Cconfirm the metric name and default target; ask if anything is missing
+- Confirm the metric name and default target; ask if anything is missing
 
 ## Every place a metric must be added
 1. Visible on the screen: progress dashboard (reflecting all time, weekly and monthly tracking), weekly check-in form (with the ability to adjust the target for this metric week to week), history of weekly check-ins
