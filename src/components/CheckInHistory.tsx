@@ -1,4 +1,5 @@
-import { formatWeekRange } from '../lib/dashboard'
+import { downloadReviewsCsv } from '../lib/csv'
+import { formatWeekRange, toLocalDateString } from '../lib/dashboard'
 import { METRICS, type Review } from '../lib/review'
 
 type Props = {
@@ -51,12 +52,24 @@ export function CheckInHistory({
       aria-labelledby="history-heading"
       className="rounded-[28px] bg-[#C7DBEF] p-6 sm:p-8"
     >
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2D4E6C]">
-        Check-in history
-      </p>
-      <h2 id="history-heading" className="mt-2 font-serif text-3xl">
-        Weeks at a glance.
-      </h2>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#2D4E6C]">
+            Check-in history
+          </p>
+          <h2 id="history-heading" className="mt-2 font-serif text-3xl">
+            Weeks at a glance.
+          </h2>
+        </div>
+        <button
+          type="button"
+          onClick={() => downloadReviewsCsv(reviews, toLocalDateString())}
+          disabled={!reviews.length}
+          className="shrink-0 rounded-lg bg-[#172B3E] px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Export CSV
+        </button>
+      </div>
       <p
         role="status"
         aria-live="polite"
