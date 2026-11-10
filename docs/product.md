@@ -182,6 +182,21 @@ furthest stage reached; any closing value wins.
   only allows access to the logged-in user. Never open access.
 - Weeks and dates use my time zone (America/Toronto).
 - Accessible: readable contrast, labelled controls, works with keyboard.
+
+## Screens and navigation (v1)
+- **Home** (this week's focus): the top 3, "Worth a follow-up", and a
+  "See all opportunities" link. Two stacked actions at the bottom:
+  "Log an update" (primary) and "Add an opportunity" (secondary).
+- **All opportunities:** the full list in priority order.
+- **Opportunity detail:** the full entry (every field, stage history
+  with dates, notes, links), with edit and delete.
+- Tapping any opportunity, on any list, including a follow-up item,
+  opens its detail. Back returns to where you came from.
+- "Log an update" and "Add an opportunity" open as sheets over the
+  current screen, each titled with what it does.
+- Visual: palette B (soft slate, blue accent), system font, light mode
+  only in v1 (dark mode later).
+
 ## Open questions
  
 None right now. Add new ones here as they come up, rather than letting
