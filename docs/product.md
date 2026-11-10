@@ -170,6 +170,10 @@ furthest stage reached; any closing value wins.
 5. **Calm and focused.** Show the few things that matter (top 3, a short
    follow-up list), not everything at once.
 6. **Honest.** Never imply more certainty than the data supports.
+7. **Actions say what they do.** Navigation (where am I) and actions
+   (do something) look different. Every button has a text label that
+   says where it leads or what it does. No bare icons or "+".
+
 ## Non-functional requirements
  
 - Works in phone and laptop browsers. Phone first. Can be added to the
