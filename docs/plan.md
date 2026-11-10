@@ -8,7 +8,8 @@ one a branch and a pull request that passes CI before it's merged.
 - **2026-11-10: Keep the foundation, replace the product.** Keep Vite,
   TypeScript, Tailwind, Biome, Vitest, `npm run check`, the store-interface
   pattern and the Stop hook. Retire the weekly check-in features (they
-  aren't in version 1). The old version is tagged `old-checkin-app`.
+  aren't in version 1). The old version is saved in a separate branch called 
+  `v1/agentic-development-experimentation`.
 - **2026-11-10: Browser storage first, Supabase in slice 9.** Screens are
   built against a storage interface, so switching to Supabase only swaps
   what's behind it.
