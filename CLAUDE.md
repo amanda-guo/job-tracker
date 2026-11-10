@@ -31,7 +31,6 @@ product decisions are mine.
   code as `*.test.ts`.
 - `src/components/`: UI only. Keep data logic out of components.
 - `docs/`: product and plan. Read-only for agents.
-- `reference/`: the old Figma app. Read-only. Being removed in slice 1.
 ## Rules
 - Every change to logic in `src/lib/` needs a test.
 - Dates: weeks start on Monday, in my local time zone (America/Toronto).
