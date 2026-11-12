@@ -88,7 +88,9 @@ features, more than one user.
   "Followed up". Any opportunity can be closed manually at any time.
 ## Feature: Quick log
  
-- A "+" button is always visible and easy to tap on a phone.
+- On Home, "Log an update" and "Add an opportunity" are stacked,
+  labelled buttons pinned to the bottom of the screen. All opportunities
+  is a backlog view and doesn't show them.
 - Quick actions:
   - **New opportunity:** only company and role required; the rest can be
     filled in later.
