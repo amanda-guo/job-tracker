@@ -199,6 +199,20 @@ furthest stage reached; any closing value wins.
 - Visual: palette B (soft slate, blue accent), system font, light mode
   only in v1 (dark mode later).
 
+## Data rules
+- Only company and role are required. Everything else can be blank
+  ("not set"), e.g. after a quick add or the Notion import.
+- Fill in later: an open opportunity missing alignment, source,
+  posting link or job description.
+- Changing stage clears fields that belong to the old stage (offer type,
+  take-home status, closed reason). The history keeps the record.
+- Reopening a closed opportunity returns it to the stage it was at
+  before it closed.
+- Event dates (stage changes, follow-ups, responses) can't be in the
+  future. Deadlines can.
+- Links: the URL is required and starts with http:// or https://. The
+  label is optional; without one, the URL is shown.
+
 ## Open questions
  
 None right now. Add new ones here as they come up, rather than letting

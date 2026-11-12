@@ -20,6 +20,15 @@ one a branch and a pull request that passes CI before it's merged.
   - Playwright: one end-to-end test of the quick log at phone size
   - Supabase client: from slice 9
   Anything else: ask first.
+- **2026-11-11: Dates come from an event history.** Each opportunity
+  stores its current state plus a history of dated events (stage changed,
+  referral changed, take-home submitted, followed up, got a response).
+  Dates are stored as `YYYY-MM-DD` in local time.
+- **2026-11-11: Text limits.** Notes 5,000 characters, job description
+  20,000, other text 200.
+- **2026-11-11: Logic never reads the clock.** Functions in src/lib/
+  take "today" as an input, so tests can control it.
+
 ## Slices
  
 | # | Slice | Status |
@@ -30,7 +39,9 @@ one a branch and a pull request that passes CI before it's merged.
 | 2a | Look and feel: colour tokens, contrast test, “no raw colours” check, phone-first layout | Done |
 | 2b | Screens: home, all opportunities, opportunity detail (placeholders), and the links between them | Done |
 | 2c | Actions: the two stacked buttons, and an accessible sheet they open (placeholder content) | Done |
-| 3 | Opportunity data model, stages and validation (`src/lib/`) | |
+| 3 | Opportunity data model, stages and validation (`src/lib/`) | Separated into smaller tasks (see below) |
+| 3a | Types, fields, validation, and the “fill in later” rule | |
+| 3b | Changing stages, reopening, follow-ups and responses, and editing event dates | |
 | 4 | Priority, follow-up and auto-close rules (`src/lib/`), tests first and reviewed by me | |
 | 5 | Browser storage behind the opportunity store interface. Reuse the backup-on-unreadable-data idea from `src/lib/storage.ts` on branch `v1/agentic-development-experimentation` | |
 | 6 | Opportunities list, detail, edit, delete with confirmation | |
