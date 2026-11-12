@@ -28,7 +28,7 @@ one a branch and a pull request that passes CI before it's merged.
 | 1 | Retire the old check-in features and `reference/`; keep the foundation; update README | Done |
 | 2 | Colour palette (design tokens), phone-first layout, navigation | Separated into smaller tasks (see below) |
 | 2a | Look and feel: colour tokens, contrast test, “no raw colours” check, phone-first layout | Done |
-| 2b | Screens: home, all opportunities, opportunity detail (placeholders), and the links between them | |
+| 2b | Screens: home, all opportunities, opportunity detail (placeholders), and the links between them | Done |
 | 2c | Actions: the two stacked buttons, and an accessible sheet they open (placeholder content) | |
 | 3 | Opportunity data model, stages and validation (`src/lib/`) | |
 | 4 | Priority, follow-up and auto-close rules (`src/lib/`), tests first and reviewed by me | |
