@@ -40,7 +40,7 @@ one a branch and a pull request that passes CI before it's merged.
 | 2b | Screens: home, all opportunities, opportunity detail (placeholders), and the links between them | Done |
 | 2c | Actions: the two stacked buttons, and an accessible sheet they open (placeholder content) | Done |
 | 3 | Opportunity data model, stages and validation (`src/lib/`) | Separated into smaller tasks (see below) |
-| 3a | Types, fields, validation, and the “fill in later” rule | |
+| 3a | Types, fields, validation, and the “fill in later” rule | Done |
 | 3b | Changing stages, reopening, follow-ups and responses, and editing event dates | |
 | 4 | Priority, follow-up and auto-close rules (`src/lib/`), tests first and reviewed by me | |
 | 5 | Browser storage behind the opportunity store interface. Reuse the backup-on-unreadable-data idea from `src/lib/storage.ts` on branch `v1/agentic-development-experimentation` | |
