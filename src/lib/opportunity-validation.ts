@@ -1,3 +1,4 @@
+import { checkEventDate, DATE_MESSAGE, isDate } from './history'
 import {
   ALIGNMENTS,
   type Alignment,
@@ -7,6 +8,7 @@ import {
   OFFER_TYPES,
   type OfferType,
   type Opportunity,
+  type OpportunityEvent,
   REFERRALS,
   RESUME_TAILORED,
   type Referral,
@@ -16,7 +18,6 @@ import {
   STAGE_LABELS,
   STAGES,
   type Stage,
-  TAKE_HOME_STATUSES,
   type TakeHomeStatus,
   WORK_MODES,
   type WorkMode,
@@ -44,7 +45,6 @@ const STAGE_FIELD_NAMES: Record<keyof typeof STAGE_FIELDS, string> = {
 }
 
 const LINK_MESSAGE = 'Use a link that starts with http:// or https://.'
-const DATE_MESSAGE = 'Use a real date, like 2026-11-30.'
 
 // ---------------------------------------------------------------------------
 // Shared checks
@@ -59,30 +59,6 @@ function tooLongMessage(text: string, limit: number): string | null {
   return count > limit
     ? `This can be up to ${formatCount(limit)} characters (it's ${formatCount(count)} now).`
     : null
-}
-
-/** A real calendar date written as `YYYY-MM-DD`. No clock, no time zone. */
-function isDate(value: string): boolean {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (!match) return false
-  const [year, month, day] = match.slice(1).map(Number)
-  if (month < 1 || month > 12 || day < 1) return false
-  const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0
-  const daysInMonth = [
-    31,
-    leap ? 29 : 28,
-    31,
-    30,
-    31,
-    30,
-    31,
-    31,
-    30,
-    31,
-    30,
-    31,
-  ]
-  return day <= daysInMonth[month - 1]
 }
 
 /** An absolute http:// or https:// URL with a host. */
@@ -123,7 +99,11 @@ export type NewOpportunityInput = {
   referral?: Referral
   /** Defaults to "interested". */
   stage?: Stage
+  /** When the starting stage happened. Defaults to today; never later. */
+  stageDate?: string
+  /** At Take-home: received (the default) or already submitted. */
   takeHomeStatus?: TakeHomeStatus | null
+  /** Needed at Offer. */
   offerType?: OfferType | null
   closedReason?: ClosedReason | null
   deadline?: string
@@ -208,6 +188,32 @@ export function createOpportunity(
   if (stage === 'closed' && closedReason === null) {
     errors.closedReason = 'Choose why it closed.'
   }
+  if (stage === 'offer' && offerType === null) {
+    errors.offerType = 'Choose whether the offer is verbal or written.'
+  }
+
+  // The starting stage is the first event; a starting referral or an
+  // already-submitted take-home are recorded on the same day.
+  const stageDate = input.stageDate?.trim() || today
+  const stageDateProblem = checkEventDate(stageDate, today)
+  if (stageDateProblem) errors.stageDate = stageDateProblem
+  const referral = input.referral ?? 'none'
+  const history: OpportunityEvent[] = [
+    {
+      type: 'stage',
+      date: stageDate,
+      stage,
+      offerType: stage === 'offer' ? offerType : null,
+      closedReason: stage === 'closed' ? closedReason : null,
+      closedAutomatically: false,
+    },
+  ]
+  if (referral !== 'none') {
+    history.push({ type: 'referral', date: stageDate, referral })
+  }
+  if (stage === 'take-home' && takeHomeStatus === 'submitted') {
+    history.push({ type: 'take-home-submitted', date: stageDate })
+  }
 
   const opportunity: Opportunity = {
     id,
@@ -218,12 +224,6 @@ export function createOpportunity(
     workMode: input.workMode ?? null,
     alignment: input.alignment ?? null,
     source: input.source ?? null,
-    referral: input.referral ?? 'none',
-    stage,
-    takeHomeStatus,
-    offerType,
-    closedReason,
-    closedAutomatically: false,
     deadline,
     nextStep: text('nextStep', input.nextStep, LIMITS.text),
     resumeTailored: input.resumeTailored ?? null,
@@ -235,6 +235,7 @@ export function createOpportunity(
     links,
     notes: text('notes', input.notes, LIMITS.notes),
     dateAdded: today,
+    history,
   }
 
   return Object.keys(errors).length > 0
@@ -262,8 +263,11 @@ export type ReadResult = {
 
 /**
  * Reads opportunities back from storage. Never throws.
- * - An entry without a readable id, company, role, stage, referral or date
- *   added is skipped (the app can't work without these).
+ * - An entry without a readable id, company, role, date added, or at least
+ *   one readable stage event is skipped (the app can't work without these).
+ * - Unreadable events are dropped; the rest of the history is kept, in date
+ *   order. Stage, referral and their details always come from the history,
+ *   never from stored copies.
  * - Any other unreadable field is cleared to "not set"; the rest is kept.
  * - Format rules apply (dates, links); length limits don't, so saved text
  *   is never thrown away.
@@ -300,12 +304,12 @@ export function readStoredOpportunities(data: unknown): ReadResult {
     // Fields the app can't work without: skip the entry if any is unreadable.
     const isText = (value: unknown): value is string =>
       typeof value === 'string' && value.trim() !== ''
+    const history = readHistory(record.history)
     const required: [string, boolean][] = [
       ['id', isText(record.id)],
       ['company', isText(record.company)],
       ['role', isText(record.role)],
-      ['stage', isOneOf(STAGES, record.stage)],
-      ['referral', isOneOf(REFERRALS, record.referral)],
+      ['history', history.events.some((event) => event.type === 'stage')],
       [
         'dateAdded',
         typeof record.dateAdded === 'string' && isDate(record.dateAdded),
@@ -325,7 +329,7 @@ export function readStoredOpportunities(data: unknown): ReadResult {
       return
     }
     seenIds.add(id)
-    const stage = record.stage as Stage
+    for (const problem of history.problems) problems.push({ index, ...problem })
 
     // Everything else: clear to "not set" if unreadable, and say so.
     const clear = (field: string) => {
@@ -351,15 +355,6 @@ export function readStoredOpportunities(data: unknown): ReadResult {
       if (isMissing(value)) return null
       return isOneOf(values, value) ? value : clear(field)
     }
-    const stageOption = <T extends string>(
-      field: keyof typeof STAGE_FIELDS,
-      values: readonly T[],
-    ) => {
-      const value = option(field, values)
-      return value !== null && stage !== STAGE_FIELDS[field]
-        ? clear(field)
-        : value
-    }
 
     const links: Link[] = []
     if (Array.isArray(record.links)) {
@@ -379,22 +374,6 @@ export function readStoredOpportunities(data: unknown): ReadResult {
       clear('links')
     }
 
-    const closedReason = stageOption('closedReason', CLOSED_REASONS)
-    const closedReasonUnreadable = problems.some(
-      (p) => p.index === index && p.field === 'closedReason',
-    )
-    if (
-      stage === 'closed' &&
-      closedReason === null &&
-      !closedReasonUnreadable
-    ) {
-      problems.push({
-        index,
-        field: 'closedReason',
-        message: 'It\'s closed without a reason. It was kept as "Closed".',
-      })
-    }
-
     opportunities.push({
       id,
       company: record.company as string,
@@ -404,13 +383,6 @@ export function readStoredOpportunities(data: unknown): ReadResult {
       workMode: option('workMode', WORK_MODES),
       alignment: option('alignment', ALIGNMENTS),
       source: option('source', SOURCES),
-      referral: record.referral as Referral,
-      stage,
-      takeHomeStatus: stageOption('takeHomeStatus', TAKE_HOME_STATUSES),
-      offerType: stageOption('offerType', OFFER_TYPES),
-      closedReason,
-      closedAutomatically:
-        stage === 'closed' && record.closedAutomatically === true,
       deadline: optionalText('deadline', isDate),
       nextStep: optionalText('nextStep'),
       resumeTailored: option('resumeTailored', RESUME_TAILORED),
@@ -418,8 +390,108 @@ export function readStoredOpportunities(data: unknown): ReadResult {
       links,
       notes: optionalText('notes'),
       dateAdded: record.dateAdded as string,
+      history: history.events,
     })
   })
 
   return { opportunities, problems }
+}
+
+const DATED_EVENT_TYPES = [
+  'take-home-submitted',
+  'offer-written',
+  'followed-up',
+  'got-response',
+] as const
+
+/**
+ * Reads a stored history. Unreadable events are dropped; stage details that
+ * are missing or don't belong to the event's stage are cleared. Events out
+ * of date order are put back in order (same-day order kept). Each problem
+ * is reported once per event.
+ */
+function readHistory(value: unknown): {
+  events: OpportunityEvent[]
+  problems: { field: string; message: string }[]
+} {
+  const problems: { field: string; message: string }[] = []
+  if (!Array.isArray(value)) return { events: [], problems }
+
+  const events: OpportunityEvent[] = []
+  value.forEach((raw: unknown, index) => {
+    const field = `history.${index}`
+    const drop = () => {
+      problems.push({
+        field,
+        message: `Event ${index + 1} couldn't be read, so it was left out.`,
+      })
+    }
+    if (typeof raw !== 'object' || raw === null) {
+      drop()
+      return
+    }
+    const event = raw as Record<string, unknown>
+    if (typeof event.date !== 'string' || !isDate(event.date)) {
+      drop()
+      return
+    }
+    const date = event.date
+
+    if (event.type === 'referral') {
+      if (!isOneOf(REFERRALS, event.referral)) {
+        drop()
+        return
+      }
+      events.push({ type: 'referral', date, referral: event.referral })
+    } else if (isOneOf(DATED_EVENT_TYPES, event.type)) {
+      events.push({ type: event.type, date })
+    } else if (event.type === 'stage') {
+      if (!isOneOf(STAGES, event.stage)) {
+        drop()
+        return
+      }
+      const stage = event.stage
+      let cleared = false
+      /** The value when it belongs to this stage and is readable; else null. */
+      const detail = <T extends string>(
+        own: Stage,
+        values: readonly T[],
+        raw: unknown,
+      ): T | null => {
+        if (stage === own && isOneOf(values, raw)) return raw
+        if (stage === own || (raw !== undefined && raw !== null)) cleared = true
+        return null
+      }
+      events.push({
+        type: 'stage',
+        date,
+        stage,
+        offerType: detail('offer', OFFER_TYPES, event.offerType),
+        closedReason: detail('closed', CLOSED_REASONS, event.closedReason),
+        closedAutomatically:
+          stage === 'closed' && event.closedAutomatically === true,
+      })
+      if (cleared) {
+        problems.push({
+          field,
+          message: `Part of event ${index + 1} couldn't be read, so it was left blank.`,
+        })
+      }
+    } else {
+      drop()
+    }
+  })
+
+  const inOrder = events.every(
+    (event, i) => i === 0 || events[i - 1].date <= event.date,
+  )
+  if (!inOrder) {
+    events.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    problems.push({
+      field: 'history',
+      message:
+        'Its events were out of date order, so they were put back in order.',
+    })
+  }
+  return { events, problems }
 }

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { currentState } from './opportunity'
 import {
   createOpportunity,
   type NewOpportunityInput,
@@ -30,6 +31,20 @@ function created(input: Partial<NewOpportunityInput> = {}) {
 
 const LINK_MESSAGE = 'Use a link that starts with http:// or https://.'
 
+const stageEvent = (
+  date: string,
+  stage: string,
+  details: Record<string, unknown> = {},
+) => ({
+  type: 'stage',
+  date,
+  stage,
+  offerType: null,
+  closedReason: null,
+  closedAutomatically: false,
+  ...details,
+})
+
 describe('createOpportunity: only company and role are needed', () => {
   it('creates a full opportunity from company and role alone', () => {
     expect(create()).toEqual({
@@ -43,12 +58,6 @@ describe('createOpportunity: only company and role are needed', () => {
         workMode: null,
         alignment: null,
         source: null,
-        referral: 'none',
-        stage: 'interested',
-        takeHomeStatus: null,
-        offerType: null,
-        closedReason: null,
-        closedAutomatically: false,
         deadline: null,
         nextStep: null,
         resumeTailored: null,
@@ -56,6 +65,7 @@ describe('createOpportunity: only company and role are needed', () => {
         links: [],
         notes: null,
         dateAdded: '2026-11-11', // from `today`, not the clock
+        history: [stageEvent('2026-11-11', 'interested')],
       },
     })
   })
@@ -240,20 +250,77 @@ describe('createOpportunity: deadline', () => {
   })
 })
 
-describe('createOpportunity: stage-specific fields', () => {
+describe('createOpportunity: starting stage and history', () => {
   it('defaults to Interested with no referral', () => {
-    expect(created()).toMatchObject({ stage: 'interested', referral: 'none' })
+    expect(currentState(created())).toMatchObject({
+      stage: 'interested',
+      referral: 'none',
+    })
   })
 
-  it('allows take-home status at the Take-home assignment stage', () => {
-    expect(
-      created({ stage: 'take-home', takeHomeStatus: 'submitted' })
-        .takeHomeStatus,
-    ).toBe('submitted')
+  it('records the starting stage as the first event, dated today', () => {
+    expect(created({ stage: 'applied' }).history).toEqual([
+      stageEvent('2026-11-11', 'applied'),
+    ])
   })
 
-  it('allows the Take-home assignment stage without a status yet', () => {
-    expect(created({ stage: 'take-home' }).takeHomeStatus).toBeNull()
+  it('dates the starting stage on a chosen day, e.g. applied last month', () => {
+    const opportunity = created({ stage: 'applied', stageDate: '2026-10-20' })
+    expect(opportunity.history).toEqual([stageEvent('2026-10-20', 'applied')])
+    expect(opportunity.dateAdded).toBe('2026-11-11') // still the day it was added
+  })
+
+  it('allows a starting date of today', () => {
+    expect(created({ stageDate: '2026-11-11' }).history[0].date).toBe(
+      '2026-11-11',
+    )
+  })
+
+  it('refuses a starting date in the future', () => {
+    expect(errorsFor({ stageDate: '2026-11-12' }).stageDate).toBe(
+      'This is after today (Nov 11). Choose Nov 11 or earlier.',
+    )
+  })
+
+  it('refuses a starting date that is not a real date', () => {
+    expect(errorsFor({ stageDate: '2026-02-30' }).stageDate).toBe(
+      'Use a real date, like 2026-11-30.',
+    )
+  })
+
+  it('records a starting referral as an event on the same day', () => {
+    const opportunity = created({
+      referral: 'referred',
+      stageDate: '2026-11-02',
+    })
+    expect(opportunity.history).toEqual([
+      stageEvent('2026-11-02', 'interested'),
+      { type: 'referral', date: '2026-11-02', referral: 'referred' },
+    ])
+    expect(currentState(opportunity).referral).toBe('referred')
+  })
+
+  it('does not record an event for "no referral"', () => {
+    expect(created({ referral: 'none' }).history).toHaveLength(1)
+  })
+
+  it('starts a take-home as received', () => {
+    expect(currentState(created({ stage: 'take-home' })).takeHomeStatus).toBe(
+      'received',
+    )
+  })
+
+  it('records an already-submitted take-home as an event on the same day', () => {
+    const opportunity = created({
+      stage: 'take-home',
+      takeHomeStatus: 'submitted',
+      stageDate: '2026-11-04',
+    })
+    expect(opportunity.history).toEqual([
+      stageEvent('2026-11-04', 'take-home'),
+      { type: 'take-home-submitted', date: '2026-11-04' },
+    ])
+    expect(currentState(opportunity).takeHomeStatus).toBe('submitted')
   })
 
   it('refuses take-home status at another stage', () => {
@@ -263,11 +330,21 @@ describe('createOpportunity: stage-specific fields', () => {
     ).toBe('Take-home status only applies at the Take-home assignment stage.')
   })
 
-  it('allows offer type at the Offer stage, and Offer without a type yet', () => {
-    expect(created({ stage: 'offer', offerType: 'verbal' }).offerType).toBe(
-      'verbal',
+  it.each(['verbal', 'written'] as const)(
+    'records a %s offer in the stage event',
+    (offerType) => {
+      const opportunity = created({ stage: 'offer', offerType })
+      expect(opportunity.history).toEqual([
+        stageEvent('2026-11-11', 'offer', { offerType }),
+      ])
+      expect(currentState(opportunity).offerType).toBe(offerType)
+    },
+  )
+
+  it('asks whether an offer is verbal or written', () => {
+    expect(errorsFor({ stage: 'offer' }).offerType).toBe(
+      'Choose whether the offer is verbal or written.',
     )
-    expect(created({ stage: 'offer' }).offerType).toBeNull()
   })
 
   it('refuses offer type at another stage', () => {
@@ -277,9 +354,8 @@ describe('createOpportunity: stage-specific fields', () => {
   })
 
   it('creates a closed opportunity with its reason, not closed automatically', () => {
-    expect(
-      created({ stage: 'closed', closedReason: 'withdrew' }),
-    ).toMatchObject({
+    const opportunity = created({ stage: 'closed', closedReason: 'withdrew' })
+    expect(currentState(opportunity)).toMatchObject({
       stage: 'closed',
       closedReason: 'withdrew',
       closedAutomatically: false,
@@ -308,6 +384,7 @@ describe('createOpportunity: errors are calm and never thrown', () => {
     deadline: '2026-02-30',
     stage: 'closed',
     offerType: 'verbal',
+    stageDate: '2027-01-01',
     links: [{ url: '', label: 'Notes' }],
   }
 
@@ -367,8 +444,9 @@ describe('readStoredOpportunities', () => {
     ['id', ''],
     ['company', '  '],
     ['role', 42],
-    ['stage', 'phone screen'],
-    ['referral', 'maybe'],
+    ['history', undefined],
+    ['history', 'oops'],
+    ['history', []],
     ['dateAdded', 'yesterday'],
   ])('skips an entry whose %s is %j, and says so', (field, value) => {
     const result = readStoredOpportunities([stored({ [field]: value })])
@@ -442,38 +520,133 @@ describe('readStoredOpportunities', () => {
     expect(result.problems.map((p) => p.field)).toEqual(['links'])
   })
 
-  it('clears a stage-specific field that does not match the stage', () => {
-    const result = readStoredOpportunities([
-      stored({ stage: 'applied', offerType: 'verbal' }),
-    ])
-    expect(result.opportunities[0].offerType).toBeNull()
-    expect(result.problems.map((p) => p.field)).toEqual(['offerType'])
+  it('works out the current state from the history, ignoring stored copies', () => {
+    const saved = stored({ stage: 'offer', referral: 'referred' })
+    const result = readStoredOpportunities([saved])
+    expect(currentState(result.opportunities[0])).toMatchObject({
+      stage: 'interested',
+      referral: 'none',
+    })
+    expect(result.opportunities[0]).not.toHaveProperty('stage')
+    expect(result.problems).toEqual([])
   })
 
-  it('keeps a closed opportunity whose reason is missing, and says so', () => {
-    const result = readStoredOpportunities([
-      stored({ stage: 'closed', closedReason: null }),
+  it('reads every kind of event', () => {
+    const history = [
+      stageEvent('2026-11-02', 'take-home'),
+      { type: 'referral', date: '2026-11-02', referral: 'requested' },
+      { type: 'take-home-submitted', date: '2026-11-03' },
+      stageEvent('2026-11-04', 'offer', { offerType: 'verbal' }),
+      { type: 'offer-written', date: '2026-11-05' },
+      { type: 'followed-up', date: '2026-11-06' },
+      { type: 'got-response', date: '2026-11-07' },
+      stageEvent('2026-11-08', 'closed', {
+        closedReason: 'no-response',
+        closedAutomatically: true,
+      }),
+    ]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(result.opportunities[0].history).toEqual(history)
+    expect(result.problems).toEqual([])
+  })
+
+  it('drops unreadable events, keeps the rest, and says which', () => {
+    const history = [
+      stageEvent('2026-11-02', 'applied'),
+      { type: 'teleported', date: '2026-11-03' },
+      { type: 'followed-up', date: 'soon' },
+      'not an event',
+      stageEvent('2026-11-04', 'phone screen'),
+      { type: 'followed-up', date: '2026-11-05' },
+    ]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(result.opportunities[0].history).toEqual([
+      stageEvent('2026-11-02', 'applied'),
+      { type: 'followed-up', date: '2026-11-05' },
     ])
-    expect(result.opportunities[0]).toMatchObject({
+    expect(result.problems.map((p) => p.field)).toEqual([
+      'history.1',
+      'history.2',
+      'history.3',
+      'history.4',
+    ])
+  })
+
+  it('skips an entry with no readable stage event', () => {
+    const history = [{ type: 'followed-up', date: '2026-11-03' }]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(result.opportunities).toEqual([])
+    expect(result.problems).toEqual([
+      { index: 0, field: 'history', message: expect.any(String) },
+    ])
+  })
+
+  it('puts events back in date order, keeping same-day order, and says so', () => {
+    const history = [
+      stageEvent('2026-11-05', 'hr-screen'),
+      stageEvent('2026-11-02', 'interested'),
+      stageEvent('2026-11-02', 'applied'),
+    ]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(result.opportunities[0].history.map((e) => e.date)).toEqual([
+      '2026-11-02',
+      '2026-11-02',
+      '2026-11-05',
+    ])
+    expect(currentState(result.opportunities[0]).stage).toBe('hr-screen')
+    expect(result.problems.map((p) => p.field)).toEqual(['history'])
+  })
+
+  it('keeps a Closed event without a reason, and says so', () => {
+    const history = [
+      stageEvent('2026-11-02', 'applied'),
+      stageEvent('2026-11-09', 'closed', { closedReason: null }),
+    ]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(currentState(result.opportunities[0])).toMatchObject({
       stage: 'closed',
       closedReason: null,
     })
-    expect(result.problems.map((p) => p.field)).toEqual(['closedReason'])
+    expect(result.problems.map((p) => p.field)).toEqual(['history.1'])
   })
 
-  it('keeps "closed automatically", and reads anything but true as false', () => {
-    const auto = stored({
-      stage: 'closed',
-      closedReason: 'no-response',
-      closedAutomatically: true,
+  it('keeps an Offer event without a type, and says so', () => {
+    const history = [stageEvent('2026-11-02', 'offer', { offerType: 'maybe' })]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(currentState(result.opportunities[0])).toMatchObject({
+      stage: 'offer',
+      offerType: null,
     })
-    expect(
-      readStoredOpportunities([auto]).opportunities[0].closedAutomatically,
-    ).toBe(true)
-    const missing = stored({ closedAutomatically: undefined })
-    expect(
-      readStoredOpportunities([missing]).opportunities[0].closedAutomatically,
-    ).toBe(false)
+    expect(result.problems.map((p) => p.field)).toEqual(['history.0'])
+  })
+
+  it("clears details that do not belong to the event's stage, and says so", () => {
+    const history = [
+      stageEvent('2026-11-02', 'applied', { offerType: 'verbal' }),
+    ]
+    const result = readStoredOpportunities([stored({ history })])
+    expect(result.opportunities[0].history).toEqual([
+      stageEvent('2026-11-02', 'applied'),
+    ])
+    expect(result.problems.map((p) => p.field)).toEqual(['history.0'])
+  })
+
+  it('reads "closed automatically" as false unless it is true', () => {
+    const closed = (closedAutomatically: unknown) =>
+      stored({
+        history: [
+          stageEvent('2026-11-02', 'closed', {
+            closedReason: 'no-response',
+            closedAutomatically,
+          }),
+        ],
+      })
+    const read = (data: unknown) =>
+      currentState(readStoredOpportunities([data]).opportunities[0])
+        .closedAutomatically
+    expect(read(closed(true))).toBe(true)
+    expect(read(closed(undefined))).toBe(false)
+    expect(read(closed('yes'))).toBe(false)
   })
 
   it('keeps saved text that is over the limits: data is never thrown away for length', () => {
@@ -488,6 +661,14 @@ describe('readStoredOpportunities', () => {
     [[{ company: {}, role: [], links: [null, 1] }]],
     [[{ ...stored(), links: [{ url: 42 }] }]],
     [[stored({ deadline: 20261130 })]],
+    [[stored({ history: [null, 1, { type: 'stage' }, { type: 'referral' }] })]],
+    [
+      [
+        stored({
+          history: [stageEvent('2026-11-02', 'applied'), { date: {} }],
+        }),
+      ],
+    ],
   ])('never throws on strange data (%#)', (data) => {
     expect(() => readStoredOpportunities(data)).not.toThrow()
   })
