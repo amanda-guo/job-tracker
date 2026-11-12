@@ -1,10 +1,17 @@
+import { Route, Routes } from 'react-router'
+import { AllOpportunitiesScreen } from './components/AllOpportunitiesScreen'
+import { HomeScreen } from './components/HomeScreen'
+import { NotFoundScreen } from './components/NotFoundScreen'
+import { OpportunityDetailScreen } from './components/OpportunityDetailScreen'
+
+/** The app's screens. The router itself is provided by the caller. */
 export default function App() {
   return (
-    <main className="page-column">
-      <h1 className="text-2xl font-semibold text-ink">Job search tracker</h1>
-      <p className="mt-4 rounded-xl border border-border bg-surface p-4 text-muted">
-        This app is being rebuilt. New version coming soon.
-      </p>
-    </main>
+    <Routes>
+      <Route path="/" element={<HomeScreen />} />
+      <Route path="/opportunities" element={<AllOpportunitiesScreen />} />
+      <Route path="/opportunities/:id" element={<OpportunityDetailScreen />} />
+      <Route path="*" element={<NotFoundScreen />} />
+    </Routes>
   )
 }
