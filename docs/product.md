@@ -198,18 +198,31 @@ furthest stage reached; any closing value wins.
   current screen, each titled with what it does.
 - Visual: palette B (soft slate, blue accent), system font, light mode
   only in v1 (dark mode later).
+- All opportunities shows closed opportunities in their own "Closed"
+  list, separate from open ones. Any closed opportunity can be moved
+  back to any stage.
 
 ## Data rules
 - Only company and role are required. Everything else can be blank
   ("not set"), e.g. after a quick add or the Notion import.
 - Fill in later: an open opportunity missing alignment, source,
   posting link or job description.
+- Every change (stage, referral, take-home submitted, offer verbal to
+  written, followed up, got a response) is a dated event in the
+  opportunity's history. The current state always follows the history.
+- Creating an opportunity records its starting stage as the first
+  event, dated today unless I choose a date.
+- Any stage can move to any other stage, including out of Closed.
+  When moving out of Closed, the stage before closing is suggested.
 - Changing stage clears fields that belong to the old stage (offer type,
-  take-home status, closed reason). The history keeps the record.
-- Reopening a closed opportunity returns it to the stage it was at
-  before it closed.
-- Event dates (stage changes, follow-ups, responses) can't be in the
-  future. Deadlines can.
+  take-home status, closed reason).
+- Any event can be undone (removed from the history), after
+  confirmation. The current state updates to match. An opportunity's
+  only stage event can't be removed.
+- Event dates can't be in the future, and must stay in order (no
+  earlier than the event before, no later than the event after). If an
+  edit breaks this, it isn't saved, and a calm message explains why and
+  how to fix it. Deadlines can be in the future.
 - Links: the URL is required and starts with http:// or https://. The
   label is optional; without one, the URL is shown.
 

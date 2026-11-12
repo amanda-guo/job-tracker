@@ -20,10 +20,10 @@ one a branch and a pull request that passes CI before it's merged.
   - Playwright: one end-to-end test of the quick log at phone size
   - Supabase client: from slice 9
   Anything else: ask first.
-- **2026-11-11: Dates come from an event history.** Each opportunity
-  stores its current state plus a history of dated events (stage changed,
-  referral changed, take-home submitted, followed up, got a response).
-  Dates are stored as `YYYY-MM-DD` in local time.
+- **2026-11-11: The history is the source of truth.** Each opportunity
+  has a history of dated events; its current state (stage, referral,
+  offer type, closed reason, take-home status) is always derived from
+  that history, never edited directly. Dates are `YYYY-MM-DD`, local.
 - **2026-11-11: Text limits.** Notes 5,000 characters, job description
   20,000, other text 200.
 - **2026-11-11: Logic never reads the clock.** Functions in src/lib/
