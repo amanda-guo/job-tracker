@@ -7,3 +7,28 @@ export function currentWeekStart(now: Date = new Date()): string {
   date.setDate(date.getDate() - daysSinceMonday)
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
+
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+]
+
+/**
+ * Label for the week containing `now`, e.g. "Week of Nov 9" (its Monday,
+ * in local time). Fixed English month names, so it reads the same on
+ * every device.
+ */
+export function weekLabel(now: Date = new Date()): string {
+  const [, month, day] = currentWeekStart(now).split('-').map(Number)
+  return `Week of ${MONTHS[month - 1]} ${day}`
+}
