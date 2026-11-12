@@ -111,11 +111,38 @@ export type Link = {
   label: string | null
 }
 
+/** A change in an opportunity's stage. Details only for their own stage. */
+export type StageEvent = {
+  type: 'stage'
+  date: string
+  stage: Stage
+  /** Set only when moving to Offer. */
+  offerType: OfferType | null
+  /** Set only when moving to Closed. */
+  closedReason: ClosedReason | null
+  /** True only when Closed by the 6-week rule. */
+  closedAutomatically: boolean
+}
+
+export type ReferralEvent = {
+  type: 'referral'
+  date: string
+  referral: Referral
+}
+
+/** Events that only record that something happened, and when. */
+export type DatedEvent = {
+  type: 'take-home-submitted' | 'offer-written' | 'followed-up' | 'got-response'
+  date: string
+}
+
+export type OpportunityEvent = StageEvent | ReferralEvent | DatedEvent
+
 /**
  * One opportunity. `null` means "not set". Dates are `YYYY-MM-DD`, local.
- * Stage-specific fields are only set at their stage: `takeHomeStatus` at
- * take-home, `offerType` at offer, `closedReason` and `closedAutomatically`
- * at closed.
+ * Stage, referral and their details are not stored: they come from
+ * `history` (see `currentState`). The history is in date order and always
+ * has at least one stage event.
  */
 export type Opportunity = {
   id: string
@@ -126,12 +153,6 @@ export type Opportunity = {
   workMode: WorkMode | null
   alignment: Alignment | null
   source: Source | null
-  referral: Referral
-  stage: Stage
-  takeHomeStatus: TakeHomeStatus | null
-  offerType: OfferType | null
-  closedReason: ClosedReason | null
-  closedAutomatically: boolean
   deadline: string | null
   nextStep: string | null
   resumeTailored: ResumeTailored | null
@@ -139,6 +160,59 @@ export type Opportunity = {
   links: Link[]
   notes: string | null
   dateAdded: string
+  history: OpportunityEvent[]
+}
+
+/** Where an opportunity stands now, worked out from its history. */
+export type OpportunityState = {
+  stage: Stage
+  referral: Referral
+  takeHomeStatus: TakeHomeStatus | null
+  offerType: OfferType | null
+  closedReason: ClosedReason | null
+  closedAutomatically: boolean
+}
+
+/**
+ * The only place current state is worked out. The latest stage event sets
+ * the stage and its details; only events after it can update those details
+ * (take-home submitted, offer written). The latest referral event sets the
+ * referral. Events that no longer apply have no effect.
+ */
+export function currentState({
+  history,
+}: Pick<Opportunity, 'history'>): OpportunityState {
+  let referral: Referral = 'none'
+  let latestStage = -1
+  history.forEach((event, index) => {
+    if (event.type === 'referral') referral = event.referral
+    if (event.type === 'stage') latestStage = index
+  })
+
+  const stageEvent = history[latestStage] as StageEvent | undefined
+  const stage = stageEvent?.stage ?? 'interested'
+  let takeHomeStatus: TakeHomeStatus | null =
+    stage === 'take-home' ? 'received' : null
+  let offerType = stage === 'offer' ? (stageEvent?.offerType ?? null) : null
+
+  for (const event of history.slice(latestStage + 1)) {
+    if (event.type === 'take-home-submitted' && stage === 'take-home') {
+      takeHomeStatus = 'submitted'
+    }
+    if (event.type === 'offer-written' && stage === 'offer')
+      offerType = 'written'
+  }
+
+  return {
+    stage,
+    referral,
+    takeHomeStatus,
+    offerType,
+    closedReason:
+      stage === 'closed' ? (stageEvent?.closedReason ?? null) : null,
+    closedAutomatically:
+      stage === 'closed' && stageEvent?.closedAutomatically === true,
+  }
 }
 
 /** True when stage `a` comes later in the process than stage `b`. */
@@ -151,7 +225,7 @@ export function isFurtherAlong(a: Stage, b: Stage): boolean {
  * link or job description. Closed opportunities never need details.
  */
 export function needsDetails(opportunity: Opportunity): boolean {
-  if (opportunity.stage === 'closed') return false
+  if (currentState(opportunity).stage === 'closed') return false
   return (
     opportunity.alignment === null ||
     opportunity.source === null ||
