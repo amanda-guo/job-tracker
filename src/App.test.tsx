@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -112,4 +118,96 @@ describe('Any other address', () => {
       expect(pageHeading("This week's focus")).toBeTruthy()
     },
   )
+})
+
+describe('Actions on Home', () => {
+  const sheets = [
+    ['Log an update', 'Logging updates is coming soon.'],
+    ['Add an opportunity', 'Adding opportunities is coming soon.'],
+  ]
+
+  const openSheet = (buttonName: string) => {
+    const button = screen.getByRole('button', { name: buttonName })
+    fireEvent.click(button)
+    return { button, dialog: screen.getByRole('dialog', { name: buttonName }) }
+  }
+
+  const pressEscape = () =>
+    fireEvent.keyDown(document.activeElement ?? document.body, {
+      key: 'Escape',
+    })
+
+  it('shows "Log an update" then "Add an opportunity", and no other buttons', () => {
+    renderAt('/')
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Log an update', 'Add an opportunity'])
+  })
+
+  it.each(['/opportunities', '/opportunities/unknown-id', '/nope'])(
+    'are not shown on %s',
+    (address) => {
+      renderAt(address)
+      expect(screen.queryByRole('button', { name: 'Log an update' })).toBeNull()
+      expect(
+        screen.queryByRole('button', { name: 'Add an opportunity' }),
+      ).toBeNull()
+    },
+  )
+
+  it.each(sheets)(
+    '"%s" opens a sheet titled with what it does',
+    (buttonName, placeholder) => {
+      renderAt('/')
+      expect(screen.queryByRole('dialog')).toBeNull()
+      const { dialog } = openSheet(buttonName)
+      expect(
+        within(dialog).getByRole('heading', { name: buttonName }),
+      ).toBeTruthy()
+      expect(within(dialog).getByText(placeholder)).toBeTruthy()
+    },
+  )
+
+  it.each(sheets)('"%s" moves focus into the sheet', (buttonName) => {
+    renderAt('/')
+    const { dialog } = openSheet(buttonName)
+    expect(dialog.contains(document.activeElement)).toBe(true)
+  })
+
+  it.each(sheets)(
+    '"%s": Escape closes the sheet and focus returns to the button',
+    (buttonName) => {
+      renderAt('/')
+      const { button } = openSheet(buttonName)
+      pressEscape()
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(document.activeElement).toBe(button)
+    },
+  )
+
+  it.each(sheets)(
+    '"%s": "Close" closes the sheet and focus returns to the button',
+    (buttonName) => {
+      renderAt('/')
+      const { button, dialog } = openSheet(buttonName)
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(document.activeElement).toBe(button)
+    },
+  )
+
+  it('blocks the screen behind while open, and frees it after', () => {
+    renderAt('/')
+    const heading = pageHeading("This week's focus")
+    const { dialog } = openSheet('Log an update')
+
+    // jsdom doesn't enforce `inert`; browsers do. This checks it's applied.
+    expect(heading.closest('[inert]')).not.toBeNull()
+    expect(dialog.closest('[inert]')).toBeNull()
+    expect(document.documentElement.style.overflow).toBe('hidden')
+
+    pressEscape()
+    expect(document.querySelector('[inert]')).toBeNull()
+    expect(document.documentElement.style.overflow).toBe('')
+  })
 })
