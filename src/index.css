@@ -1,1 +1,50 @@
 @import "tailwindcss";
+
+/* Palette B: soft slate, blue accent. The only place colours are defined.
+   Built-in Tailwind colours are switched off, so only these tokens exist. */
+@theme {
+  --color-*: initial;
+
+  --color-canvas: #eef2f8;
+  --color-surface: #fbfcfe;
+  --color-border: #d8e0eb;
+
+  --color-ink: #172b3e;
+  --color-muted: #4f6275;
+
+  --color-accent: #3e6a93;
+  --color-accent-ink: #2f5677;
+  --color-accent-soft: #e2eaf3;
+  --color-on-accent: #ffffff;
+
+  --color-attention-ink: #7a5a12;
+  --color-attention-soft: #f4ead6;
+  --color-attention-strong: #5c430d;
+}
+
+@layer base {
+  html {
+    /* Light mode only in v1. */
+    color-scheme: light;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+  }
+
+  body {
+    /* Tailwind's default sans stack: the system font, no font files. */
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+  }
+}
+
+/* Phone-first page: one centred column, comfortable side padding, and
+   room for the notch and home indicator (needs viewport-fit=cover). */
+@utility page-column {
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+  padding-top: max(1.5rem, env(safe-area-inset-top));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+}
