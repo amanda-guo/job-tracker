@@ -27,7 +27,7 @@ one a branch and a pull request that passes CI before it's merged.
 | 0 | Harness reset: CLAUDE.md points to `docs/`, evals moved out of the repo, permission rules, CI on pull requests | Done |
 | 1 | Retire the old check-in features and `reference/`; keep the foundation; update README | Done |
 | 2 | Colour palette (design tokens), phone-first layout, navigation | Separated into smaller tasks (see below) |
-| 2a | Look and feel: colour tokens, contrast test, “no raw colours” check, phone-first layout | |
+| 2a | Look and feel: colour tokens, contrast test, “no raw colours” check, phone-first layout | Done |
 | 2b | Screens: home, all opportunities, opportunity detail (placeholders), and the links between them | |
 | 2c | LActions: the two stacked buttons, and an accessible sheet they open (placeholder content) | |
 | 3 | Opportunity data model, stages and validation (`src/lib/`) | |
